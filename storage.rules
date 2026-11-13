@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    function isImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /users/{uid}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && isImage();
+    }
+
+    match /products/{productId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && isImage();
+    }
+
+    match /categories/{categoryId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && isImage();
+    }
+  }
+}
